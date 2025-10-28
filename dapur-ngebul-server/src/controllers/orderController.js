@@ -56,11 +56,19 @@ exports.getById = async (req, res) => {
 
 exports.listByDate = async (req, res) => {
   try {
-    const { date } = req.query;
+    const { date, status } = req.query;
     let where = {};
+
+    // Filter by date
     if (date) {
-      where = db.sequelize.literal(`DATE(created_at)='${date}'`);
+      where.created_at = db.sequelize.literal(`DATE(created_at)='${date}'`);
     }
+
+    // Filter by status
+    if (status) {
+      where.status = status.toUpperCase();
+    }
+
     const orders = await db.Order.findAll({
       where,
       include: { model: db.OrderItem, as: 'items' },

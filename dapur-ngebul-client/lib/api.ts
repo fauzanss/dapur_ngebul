@@ -33,6 +33,7 @@ export type OrderSummary = {
   status: string;
   cashier: string | null;
   created_at: string;
+  customer_name?: string | null;
 };
 
 export type OrderDetail = OrderSummary & {
@@ -78,10 +79,15 @@ export const api = {
   getSalesAllTime: () => http<SalesSummary>(`/api/sales/all-time`),
   createOrder: (body: CreateOrderRequest) =>
     http(`/api/orders`, { method: 'POST', body: JSON.stringify(body) }),
-  getOrders: (dateISO?: string) =>
-    http<OrderSummary[]>(`/api/orders${dateISO ? `?date=${encodeURIComponent(dateISO)}` : ''}`),
+  getOrders: (dateISO?: string, status?: string) => {
+    const params = new URLSearchParams();
+    if (dateISO) params.append('date', dateISO);
+    if (status) params.append('status', status);
+    const queryString = params.toString();
+    return http<OrderSummary[]>(`/api/orders${queryString ? `?${queryString}` : ''}`);
+  },
   getOrderById: (id: number) => http<OrderDetail>(`/api/orders/${id}`),
-  updateOrderStatus: (id: number, status: 'COOKING' | 'DELIVERING' | 'PAID') =>
+  updateOrderStatus: (id: number, status: 'COOKING' | 'DELIVERED' | 'PAID' | 'CANCELLED') =>
     http<OrderDetail>(`/api/orders/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
   getSales: (dateISO?: string) => http<SalesSummary>(`/api/sales${dateISO ? `?date=${encodeURIComponent(dateISO)}` : ''}`),
 };

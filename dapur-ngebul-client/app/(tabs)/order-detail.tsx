@@ -126,17 +126,14 @@ export default function OrderDetailTabScreen() {
           <TouchableOpacity style={[styles.statusBtn, { borderColor: '#999' }]} onPress={() => changeStatus('CANCELLED')}>
             <Text style={styles.statusIcon}>❌</Text>
             <Text style={[styles.statusText, { color: '#555' }]}>Cancelled</Text>
-            <Text style={styles.caption}>Batalkan pesanan</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.statusBtn, { borderColor: ACCENT }]} onPress={() => changeStatus('DELIVERED')}>
             <Text style={styles.statusIcon}>🚚</Text>
             <Text style={[styles.statusText, { color: ACCENT }]}>Delivered</Text>
-            <Text style={styles.caption}>Sudah dikirim</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.statusBtn, { borderColor: Brand.SuccessGreen }]} onPress={() => changeStatus('PAID')}>
             <Text style={styles.statusIcon}>✅</Text>
             <Text style={[styles.statusText, { color: Brand.SuccessGreen }]}>Paid</Text>
-            <Text style={styles.caption}>Pembayaran diterima</Text>
           </TouchableOpacity>
         </View>
         <Text style={styles.info}>Catatan: Hanya order berstatus PAID yang dihitung ke penjualan.</Text>
@@ -263,11 +260,29 @@ const styles = StyleSheet.create({
   tableRow: { flexDirection: 'row', paddingVertical: 8, paddingHorizontal: 4, borderBottomWidth: 1, borderBottomColor: '#eee' },
   tableCell: { flex: 1, color: '#333', textAlign: 'center', fontSize: 12 },
   totalRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 12, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#ddd' },
-  statusButtonRow: { flexDirection: 'row', gap: 8 },
-  statusBtn: { flex: 1, borderWidth: 2, borderRadius: 12, paddingVertical: 10, paddingHorizontal: 12, alignItems: 'center' },
-  statusIcon: { fontSize: 20, marginBottom: 4 },
-  statusText: { fontWeight: '900' },
-  caption: { fontSize: 11, color: '#777', marginTop: 2, textAlign: 'center' },
+  statusButtonRow: {
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'space-between'
+  },
+  statusBtn: {
+    flex: 1,
+    borderWidth: 2,
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 6
+  },
+  statusIcon: {
+    fontSize: 16
+  },
+  statusText: {
+    fontWeight: '700',
+    fontSize: 12
+  },
   info: { marginTop: 10, fontSize: 12, color: '#666' },
   printBtn: { backgroundColor: Brand.FireRed, paddingVertical: 12, paddingHorizontal: 16, borderRadius: 12, alignItems: 'center', marginTop: 8 },
   printBtnText: { color: '#fff', fontWeight: '800', fontSize: 16 },
