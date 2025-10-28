@@ -1,0 +1,258 @@
+Buatkan proyek full-stack untuk Dapur Ngebul — aplikasi kasir untuk penjualan makanan/minuman dapur — dengan spesifikasi lengkap berikut. Hasil akhir harus berupa dua folder dalam repository:
+
+dapur-ngebul-client (React Native app — Android + iOS)
+
+dapur-ngebul-server (Node.js + Express + MySQL backend)
+
+Gunakan bahasa Indonesia untuk UI/komentar kode dan sertakan README singkat di masing-masing folder.
+
+Ringkasan fitur utama
+
+Tampilkan daftar menu (menu berasal dari attachment yang saya lampirkan; jika attachment tidak tersedia, gunakan contoh menu fallback di bawah).
+
+Buat order (pilih beberapa item, set kuantitas, catatan per item).
+
+Checkout / bayar: catat transaksi ke database.
+
+Cetak struk (thermal printer Bluetooth & opsi print via OS print dialog).
+
+Lihat riwayat penjualan / laporan harian (filter by date).
+
+Semua komunikasi client ↔ server lewat REST API terintegrasi.
+
+UI menarik dan responsif (pakai desain modern, tombol besar untuk kasir, warna brand: merah tua (#B22222) + oranye aksen).
+
+Tech stack & library pilihan
+
+Frontend: React Native (React Native CLI) — bukan Expo (agar integrasi Bluetooth printer lebih mudah).
+
+UI: React Native Paper atau NativeBase (pilih satu; gunakan komponen siap pakai).
+
+State: React Query + Context untuk cart / session.
+
+Networking: axios.
+
+Printer Bluetooth: react-native-bluetooth-escpos-printer atau react-native-thermal-receipt-printer (fallback: use Print API react-native-print untuk AirPrint / Android Print Service).
+
+Backend: Node.js + Express
+
+ORM: Sequelize (MySQL)
+
+Auth: minimal — optional cashier login (JWT) — tapi boleh dibuat sederhana (no OAuth).
+
+Logging: morgan
+
+Database: MySQL (gunakan env yang saya sediakan).
+
+Env (server):
+
+DB_HOST=localhost
+DB_USER=root
+DB_PASSWORD=SecureRootPass123!
+DB_NAME=dapur_ngebul
+
+Struktur proyek (harus dibuat persis)
+/dapur-ngebul-client
+  /src
+    /screens
+      Dashboard.js
+      MenuList.js
+      OrderComposer.js
+      Checkout.js
+      OrdersHistory.js
+      SettingsPrinter.js
+    /components
+      MenuCard.js
+      CartBottomSheet.js
+      ReceiptPreview.js
+    /api
+      api.js
+    App.js
+  package.json
+  README.md
+
+/dapur-ngebul-server
+  /src
+    /controllers
+      menuController.js
+      orderController.js
+      salesController.js
+      printerController.js (opsional)
+    /models
+      index.js
+      MenuItem.js
+      Order.js
+      OrderItem.js
+      Sale.js
+      PrinterConfig.js
+    /routes
+      menu.js
+      orders.js
+      sales.js
+      printers.js
+    /migrations
+      create_tables.sql
+    app.js
+  .env.example
+  package.json
+  README.md
+
+Skema database (SQL) — masukkan ke migrations/create_tables.sql
+
+Berikan migration SQL yang bisa langsung dijalankan.
+
+CREATE DATABASE IF NOT EXISTS dapur_ngebul;
+USE dapur_ngebul;
+
+CREATE TABLE menu_items (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  sku VARCHAR(50) UNIQUE,
+  name VARCHAR(255) NOT NULL,
+  description TEXT,
+  price DECIMAL(10,2) NOT NULL,
+  category VARCHAR(100),
+  available BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE orders (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  order_uuid VARCHAR(36) NOT NULL,
+  total_amount DECIMAL(12,2) NOT NULL,
+  paid_amount DECIMAL(12,2),
+  status VARCHAR(50) DEFAULT 'PENDING',
+  cashier VARCHAR(100),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE order_items (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  order_id INT NOT NULL,
+  menu_item_id INT NOT NULL,
+  name VARCHAR(255),
+  price DECIMAL(10,2),
+  quantity INT DEFAULT 1,
+  note TEXT,
+  FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+  FOREIGN KEY (menu_item_id) REFERENCES menu_items(id)
+);
+
+CREATE TABLE sales_records (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  order_id INT NOT NULL,
+  date DATE,
+  total DECIMAL(12,2),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (order_id) REFERENCES orders(id)
+);
+
+CREATE TABLE printer_configs (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(255),
+  type VARCHAR(50),
+  address VARCHAR(255),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+Contoh data menu (fallback; gunakan attachment jika ada)
+
+Masukkan seed data jika attachment tidak tersedia.
+
+INSERT INTO menu_items (sku, name, description, price, category) VALUES
+('DNB-001', 'Seblak Original', 'Seblak pedas original', 15000.00, 'Seblak'),
+('DNB-002', 'Seblak Keju', 'Seblak dengan topping keju', 18000.00, 'Seblak'),
+('DNB-003', 'Bakso Goreng', 'Bakso kriuk', 12000.00, 'Cemilan'),
+('DNB-004', 'Es Teh Manis', 'Es teh gula aren', 7000.00, 'Minuman');
+
+API spec (REST)
+
+Implementasikan JSON API, contoh route & payloads:
+
+GET /api/menu
+Response: list menu items.
+
+POST /api/orders
+Body:
+
+{
+  "order_uuid": "uuid-v4",
+  "cashier": "Nama Kasir",
+  "items": [
+    {"menu_item_id": 1, "quantity": 2, "note": "less spicy"}
+  ],
+  "paid_amount": 50000
+}
+
+
+Response: created order, order_id, receipt info.
+
+GET /api/orders/:id — ambil detail order + items.
+
+GET /api/orders?date=YYYY-MM-DD — list orders by date.
+
+GET /api/sales?date=YYYY-MM-DD — ringkasan penjualan (total, count).
+
+POST /api/print (opsional) — server-side print forwarding to network printer (boleh kosong, client-side printing lebih disarankan). Body: { "order_id": 123 }.
+
+Pastikan response menggunakan HTTP status codes sesuai.
+
+Integrasi Printer (perangkat kasir)
+
+Di client: sediakan halaman setting untuk memilih metode cetak:
+
+Bluetooth thermal — gunakan react-native-thermal-receipt-printer atau react-native-bluetooth-escpos-printer.
+
+AirPrint / Android Print — fallback react-native-print untuk perangkat jaringan.
+
+Implementasi: pada checkout, setelah order disimpan, buka modul printer untuk mengirim data struk terformat (nama toko, items, qty, harga, total, terima/kembalian, waktu, nota id).
+
+Sertakan preview struk di layar sebelum cetak (komponen ReceiptPreview).
+
+UI / UX guideline (agar menarik)
+
+Gunakan layout grid menu: setiap item kartu besar (icon/gambar, nama, harga, tombol +/–).
+
+Warna: primary #B22222 (merah bata), accent #FF8C00 (oranye), background netral #F7F7F7.
+
+Tombol checkout besar di footer; animasi lembut saat menambahkan item (Framer Motion for RN optional).
+
+Gunakan font yang bersih (system font), spacing lapang untuk kasir yang cepat.
+
+Sertakan tema gelap opsional.
+
+Pengujian & perintah dev
+
+Sertakan npm run dev di server untuk start dengan nodemon.
+
+Sertakan README langkah-langkah:
+
+cd dapur-ngebul-server && npm install && cp .env.example .env && fill env && npm run migrate && npm run seed && npm run dev
+
+cd dapur-ngebul-client && yarn install && react-native run-android (atau run-ios)
+
+Keluaran yang diharapkan dari Cursor
+
+Minta Cursor menghasilkan:
+
+Repos lengkap (dua folder) dengan file-file utama terisi (contoh: App.js, screen components, controllers, models, routes).
+
+migrations/create_tables.sql dan seed (contoh data).
+
+README di root tiap folder berisi instruksi setup singkat.
+
+Implementasi endpoint utama (/api/menu, /api/orders, /api/sales) dan integrasi database via Sequelize.
+
+Implementasi client minimal yang fungsional: list menu, buat order, checkout, preview receipt, panggil API, dan tombol cetak yang memanggil modul printer. UI harus rapi menggunakan React Native Paper.
+
+Komentar di kode supaya mudah dimengerti.
+
+Tambahan: Jika attachment menu tersedia, gunakan file tersebut sebagai source menu untuk seed; jika tidak, gunakan fallback seed yang disertakan.
+
+Catatan prioritas
+
+Pastikan integrasi API berfungsi end-to-end (client bisa buat order → server simpan → server respons → client bisa mencetak).
+
+Utamakan UX kasir: kecepatan, tombol besar, konfirmasi pembayaran cepat.
+
+Sertakan handling error sederhana (koneksi DB, printer unavailable).
