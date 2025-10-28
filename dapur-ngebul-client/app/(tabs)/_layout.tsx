@@ -48,6 +48,14 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="chart.bar.fill" color={color} />,
         }}
       />
+      {/** Hidden route inside Tabs so bottom bar stays visible */}
+      <Tabs.Screen
+        name="order-detail"
+        options={{
+          href: null,
+          title: 'Detail Order',
+        }}
+      />
       <Tabs.Screen
         name="settings"
         options={{

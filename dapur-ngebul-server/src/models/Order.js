@@ -6,6 +6,7 @@ module.exports = (sequelize, DataTypes) => {
     paid_amount: DataTypes.DECIMAL(12, 2),
     status: { type: DataTypes.STRING(50), defaultValue: 'PENDING' },
     cashier: DataTypes.STRING(100),
+    customer_name: DataTypes.STRING(100),
     created_at: { type: DataTypes.DATE, field: 'created_at' },
   }, {
     tableName: 'orders',

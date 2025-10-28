@@ -1,7 +1,7 @@
 const db = require('../models');
 
 exports.create = async (req, res) => {
-  const { order_uuid, cashier, items = [], paid_amount } = req.body || {};
+  const { order_uuid, cashier, items = [], paid_amount, customer_name } = req.body || {};
   if (!order_uuid || !Array.isArray(items) || items.length === 0) {
     return res.status(400).json({ message: 'order_uuid dan items wajib' });
   }
@@ -19,7 +19,7 @@ exports.create = async (req, res) => {
       total += price * (i.quantity || 1);
     });
 
-    const order = await db.Order.create({ order_uuid, cashier, total_amount: total, paid_amount, status: 'PAID' }, { transaction: t });
+    const order = await db.Order.create({ order_uuid, cashier, total_amount: total, paid_amount: paid_amount ?? null, status: 'COOKING', customer_name: customer_name || null }, { transaction: t });
 
     for (const i of items) {
       const mi = menuMap.get(i.menu_item_id);
@@ -64,10 +64,29 @@ exports.listByDate = async (req, res) => {
     const orders = await db.Order.findAll({
       where,
       include: { model: db.OrderItem, as: 'items' },
-      order: [['id','DESC']],
+      order: [['id', 'DESC']],
     });
     res.json(orders);
   } catch (err) {
     res.status(500).json({ message: 'Gagal mengambil daftar order', error: String(err) });
+  }
+};
+
+exports.updateStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    let { status } = req.body || {};
+    if (!status) return res.status(400).json({ message: 'status wajib' });
+    status = String(status).toUpperCase();
+    const allowed = new Set(['COOKING', 'DELIVERED', 'CANCELLED', 'PAID']);
+    if (!allowed.has(status)) return res.status(400).json({ message: 'status tidak valid' });
+    const order = await db.Order.findByPk(id);
+    if (!order) return res.status(404).json({ message: 'Order tidak ditemukan' });
+    order.status = status;
+    await order.save();
+    const withItems = await db.Order.findByPk(id, { include: { model: db.OrderItem, as: 'items' } });
+    res.json(withItems);
+  } catch (err) {
+    res.status(500).json({ message: 'Gagal update status order', error: String(err) });
   }
 };

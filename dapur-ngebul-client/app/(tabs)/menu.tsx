@@ -1,8 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View, ScrollView } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View, ScrollView, Modal, TextInput } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api, MenuItem } from '@/lib/api';
-import { Colors } from '@/constants/theme';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { Colors, Brand } from '@/constants/theme';
 
 type CartItem = { item: MenuItem; quantity: number };
 
@@ -13,17 +14,21 @@ export default function MenuScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cart, setCart] = useState<Record<number, CartItem>>({});
-  const [activeCategory, setActiveCategory] = useState<string>('Semua');
+  const [checkoutVisible, setCheckoutVisible] = useState(false);
+  const [customerName, setCustomerName] = useState('');
+  const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState('');
 
-  const BRAND_PRIMARY = '#B22222';
-  const BRAND_ACCENT = '#FF8C00';
-  const BG_NEUTRAL = '#F7F7F7';
+  const BRAND_PRIMARY = Brand.FireRed;
+  const BRAND_ACCENT = Brand.BurntOrange;
+  const BG_NEUTRAL = Brand.CoffeeBeige;
 
   const fetchMenu = async () => {
     try {
       setError(null);
       const data = await api.getMenu();
-      setMenu(data);
+      const sorted = [...data].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'id', { sensitivity: 'base' }));
+      setMenu(sorted);
     } catch (e) {
       setError('Gagal memuat menu. Pastikan server berjalan di 4002.');
     } finally {
@@ -36,20 +41,26 @@ export default function MenuScreen() {
     fetchMenu();
   }, []);
 
+  useFocusEffect(
+    useCallback(() => {
+      fetchMenu();
+    }, [])
+  );
+
   const onRefresh = () => {
     setRefreshing(true);
     fetchMenu();
   };
 
-  const categories = useMemo(() => {
-    const cats = ['Semua', ...Array.from(new Set(menu.map(m => m.category).filter(Boolean))).sort()];
-    return cats;
-  }, [menu]);
-
   const filteredMenu = useMemo(() => {
-    if (activeCategory === 'Semua') return menu;
-    return menu.filter(m => m.category === activeCategory);
-  }, [menu, activeCategory]);
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return menu;
+    return menu.filter(m =>
+      (m.name?.toLowerCase().includes(q)) ||
+      (m.description?.toLowerCase().includes(q)) ||
+      (m.category?.toLowerCase().includes(q))
+    );
+  }, [menu, searchQuery]);
 
   const addToCart = (item: MenuItem) => {
     setCart((prev) => {
@@ -82,88 +93,125 @@ export default function MenuScreen() {
       await api.createOrder({
         order_uuid,
         cashier: 'Kasir',
+        customer_name: customerName || undefined,
         items: Object.values(cart).map((ci) => ({ menu_item_id: ci.item.id, quantity: ci.quantity })),
-        paid_amount: total,
       });
       setCart({});
-      alert('Order berhasil dibuat.');
+      setCustomerName('');
+      setCheckoutVisible(false);
+      alert('Order dibuat dengan status COOKING.');
     } catch (e) {
       alert('Gagal membuat order.');
     }
   };
 
-  const renderItem = ({ item }: { item: MenuItem }) => (
-    <View style={styles.card}>
-      <View style={styles.cardHeader}>
-        <Text style={styles.cardTitle}>{item.name}</Text>
-        {item.available === false && <Text style={styles.badgeUnavailable}>Habis</Text>}
-      </View>
-      {item.description ? <Text style={styles.cardDesc} numberOfLines={2}>{item.description}</Text> : null}
-      <View style={styles.cardFooter}>
-        <Text style={styles.price}>{formatIDR(item.price)}</Text>
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          <TouchableOpacity style={[styles.btn, { backgroundColor: '#ddd' }]} onPress={() => removeFromCart(item)}>
-            <Text style={[styles.btnText, { color: '#333' }]}>-</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.btn, { backgroundColor: BRAND_ACCENT }]} onPress={() => addToCart(item)}>
-            <Text style={styles.btnText}>+</Text>
-          </TouchableOpacity>
+  const renderItem = ({ item }: { item: MenuItem }) => {
+    const cartItem = cart[item.id];
+    const quantity = cartItem?.quantity || 0;
+    const isInCart = quantity > 0;
+
+    return (
+      <View style={[
+        styles.card,
+        isInCart && styles.cardSelected
+      ]}>
+        <View style={styles.cardHeader}>
+          <Text style={styles.cardTitle} numberOfLines={2}>{item.name}</Text>
+          {item.available === false && <Text style={styles.badgeUnavailable}>Habis</Text>}
+          {isInCart && (
+            <View style={styles.quantityBadge}>
+              <Text style={styles.quantityText}>{quantity}</Text>
+            </View>
+          )}
         </View>
+        <Text
+          style={styles.cardDesc}
+          numberOfLines={2}
+        >{item.description || ''}</Text>
+        <View style={styles.cardFooter}>
+          <Text style={styles.price}>{formatIDR(item.price)}</Text>
+          <View style={styles.buttonContainer}>
+            {isInCart && (
+              <TouchableOpacity
+                style={[styles.btn, styles.btnRemove]}
+                onPress={() => removeFromCart(item)}
+              >
+                <Text style={styles.btnText}>-</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity
+              style={[
+                styles.btn,
+                isInCart ? styles.btnAdd : styles.btnPrimary
+              ]}
+              onPress={() => addToCart(item)}
+            >
+              <Text style={styles.btnText}>
+                {isInCart ? '+' : 'Tambah'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    );
+  };
+
+  if (loading) return (
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      <ActivityIndicator color={BRAND_PRIMARY} size="large" style={{ marginTop: 24 }} />
+    </View>
+  );
+
+  if (error) return (
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={styles.center}>
+        <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity style={[styles.checkoutBtn, { marginTop: 12 }]} onPress={() => fetchMenu()}>
+          <Text style={styles.checkoutText}>Coba Lagi</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
 
-  const content = useMemo(() => {
-    if (loading) return <ActivityIndicator color={BRAND_PRIMARY} size="large" style={{ marginTop: 24 }} />;
-    if (error) return (
-      <View style={styles.center}>
-        <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity style={[styles.checkoutBtn, { marginTop: 12 }]} onPress={fetchMenu}>
-          <Text style={styles.checkoutText}>Coba Lagi</Text>
-        </TouchableOpacity>
-      </View>
-    );
-    if (!menu.length) return (
+  if (!menu.length) return (
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.center}>
         <Text style={styles.emptyText}>Menu kosong</Text>
       </View>
-    );
-    return (
+    </View>
+  );
+
+  return (
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.content}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabContainer}>
-          {categories.map(cat => (
-            <TouchableOpacity
-              key={cat}
-              style={[styles.tab, activeCategory === cat && styles.tabActive]}
-              onPress={() => setActiveCategory(cat)}
-            >
-              <Text style={[styles.tabText, activeCategory === cat && styles.tabTextActive]}>{cat}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        <TextInput
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholder="Cari menu..."
+          style={styles.searchInput}
+        />
         <FlatList
           data={filteredMenu}
           keyExtractor={(it) => String(it.id)}
-          contentContainerStyle={styles.listContent}
-          numColumns={2}
-          columnWrapperStyle={{ gap: 12 }}
+          contentContainerStyle={[styles.listContent, { paddingBottom: 120 }]}
           renderItem={renderItem}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.light.tint} />}
         />
       </View>
-    );
-  }, [loading, error, menu, refreshing]);
-
-  return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      {content}
       <View style={[styles.checkoutBar, { paddingBottom: insets.bottom + 12 }]}>
         <View style={{ flex: 1 }}>
           <Text style={styles.totalLabel}>Total</Text>
           <Text style={styles.totalValue}>{formatIDR(total)}</Text>
         </View>
-        <TouchableOpacity style={styles.checkoutBtn} onPress={checkout} disabled={!Object.keys(cart).length}>
-          <Text style={styles.checkoutText}>Bayar</Text>
+        <TouchableOpacity
+          style={styles.checkoutBtn}
+          onPress={() => {
+            const cartArr = Object.values(cart).map(ci => ({ id: ci.item.id, name: ci.item.name, price: Number(ci.item.price), quantity: ci.quantity }));
+            router.push({ pathname: '/confirm-order', params: { cart: JSON.stringify(cartArr), customerName } });
+          }}
+          disabled={!Object.keys(cart).length}
+        >
+          <Text style={styles.checkoutText}>Buat Order</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -199,33 +247,109 @@ const BG_NEUTRAL = '#F7F7F7';
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: BG_NEUTRAL, paddingBottom: 84 },
   content: { flex: 1 },
-  tabContainer: { paddingHorizontal: 12, paddingVertical: 8 },
-  tab: { paddingHorizontal: 16, paddingVertical: 8, marginRight: 8, borderRadius: 20, backgroundColor: '#fff' },
-  tabActive: { backgroundColor: BRAND_PRIMARY },
-  tabText: { color: '#666', fontWeight: '600' },
-  tabTextActive: { color: '#fff', fontWeight: '700' },
+  searchInput: { marginHorizontal: 12, marginTop: 8, marginBottom: 4, borderWidth: 1, borderColor: '#eee', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, backgroundColor: '#fff' },
   listContent: { padding: 12, paddingBottom: 24, gap: 12 },
   card: {
-    flex: 1,
     backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 12,
-    gap: 8,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
     shadowColor: '#000',
     shadowOpacity: 0.08,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 2,
-    minHeight: 140,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
+    borderWidth: 2,
+    borderColor: 'transparent',
   },
-  cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  cardTitle: { fontSize: 16, fontWeight: '700', color: '#222', flex: 1 },
-  badgeUnavailable: { backgroundColor: '#ddd', color: '#555', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, fontSize: 12, overflow: 'hidden' },
-  cardDesc: { fontSize: 12, color: '#666' },
-  cardFooter: { marginTop: 'auto', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  price: { color: BRAND_PRIMARY, fontWeight: '800', fontSize: 16 },
-  btn: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10 },
-  btnText: { color: '#fff', fontWeight: '700' },
+  cardSelected: {
+    backgroundColor: '#f8f9ff',
+    borderColor: BRAND_PRIMARY,
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginBottom: 8
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#222',
+    flex: 1,
+    lineHeight: 24
+  },
+  badgeUnavailable: {
+    backgroundColor: '#ffebee',
+    color: '#d32f2f',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    fontSize: 11,
+    fontWeight: '600',
+    overflow: 'hidden'
+  },
+  quantityBadge: {
+    backgroundColor: BRAND_PRIMARY,
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    minWidth: 24,
+    alignItems: 'center',
+  },
+  quantityText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  cardDesc: {
+    fontSize: 14,
+    color: '#666',
+    lineHeight: 20,
+    marginBottom: 12
+  },
+  chipRow: { flexDirection: 'row', gap: 8, marginTop: 8 },
+  chip: { backgroundColor: '#F1F1F1', color: '#555', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 9999, fontSize: 12 },
+  cardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between'
+  },
+  price: {
+    color: BRAND_PRIMARY,
+    fontWeight: '900',
+    fontSize: 20
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+  },
+  btn: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    minWidth: 44,
+    alignItems: 'center',
+  },
+  btnPrimary: {
+    backgroundColor: BRAND_PRIMARY,
+  },
+  btnAdd: {
+    backgroundColor: BRAND_ACCENT,
+  },
+  btnRemove: {
+    backgroundColor: '#ff6b6b',
+  },
+  btnText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 14
+  },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   errorText: { color: BRAND_PRIMARY, textAlign: 'center' },
   emptyText: { color: '#555' },
@@ -234,7 +358,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: '#fff',
+    backgroundColor: Brand.DarkBrown,
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderTopLeftRadius: 16,
@@ -248,10 +372,14 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: -2 },
     elevation: 6,
   },
-  totalLabel: { color: '#666', fontSize: 12 },
-  totalValue: { color: BRAND_PRIMARY, fontWeight: '900', fontSize: 18 },
+  totalLabel: { color: Brand.WarmGold, fontSize: 12 },
+  totalValue: { color: Brand.SalmonLight, fontWeight: '900', fontSize: 18 },
   checkoutBtn: { backgroundColor: BRAND_ACCENT, paddingHorizontal: 18, paddingVertical: 12, borderRadius: 12 },
   checkoutText: { color: '#fff', fontWeight: '800' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  modalCard: { backgroundColor: '#fff', padding: 16, borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '80%' },
+  modalTitle: { fontSize: 18, fontWeight: '900', color: '#222', marginBottom: 8 },
+  input: { borderWidth: 1, borderColor: '#eee', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, marginTop: 8 },
 });
 
 

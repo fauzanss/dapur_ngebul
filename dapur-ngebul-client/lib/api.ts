@@ -1,4 +1,5 @@
 import { API_BASE } from '@/constants/config';
+import { showGlobalLoading, hideGlobalLoading } from '@/lib/loading';
 
 export type MenuItem = {
   id: number;
@@ -20,7 +21,8 @@ export type CreateOrderRequest = {
   order_uuid: string;
   cashier: string;
   items: CreateOrderItem[];
-  paid_amount: number;
+  paid_amount?: number;
+  customer_name?: string;
 };
 
 export type OrderSummary = {
@@ -33,6 +35,18 @@ export type OrderSummary = {
   created_at: string;
 };
 
+export type OrderDetail = OrderSummary & {
+  items: Array<{
+    id: number;
+    menu_item_id: number;
+    name: string;
+    price: number;
+    quantity: number;
+    note?: string | null;
+  }>;
+  customer_name?: string | null;
+};
+
 export type SalesSummary = {
   date: string;
   total: number;
@@ -40,23 +54,35 @@ export type SalesSummary = {
 };
 
 async function http<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    ...init,
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`HTTP ${res.status} ${text}`);
+  showGlobalLoading();
+  try {
+    const res = await fetch(`${API_BASE}${path}`, {
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      ...init,
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`HTTP ${res.status} ${text}`);
+    }
+    return res.json();
+  } finally {
+    hideGlobalLoading();
   }
-  return res.json();
 }
 
 export const api = {
-  getMenu: () => http<MenuItem[]>(`/api/menu`),
+  getMenu: (category?: string) => http<MenuItem[]>(`/api/menu${category ? `?category=${encodeURIComponent(category)}` : ''}`),
+  getCategories: () => http<string[]>(`/api/menu/categories`),
+  getSalesToday: () => http<SalesSummary>(`/api/sales/today`),
+  getSalesMonthToDate: () => http<SalesSummary>(`/api/sales/month-to-date`),
+  getSalesAllTime: () => http<SalesSummary>(`/api/sales/all-time`),
   createOrder: (body: CreateOrderRequest) =>
     http(`/api/orders`, { method: 'POST', body: JSON.stringify(body) }),
   getOrders: (dateISO?: string) =>
     http<OrderSummary[]>(`/api/orders${dateISO ? `?date=${encodeURIComponent(dateISO)}` : ''}`),
+  getOrderById: (id: number) => http<OrderDetail>(`/api/orders/${id}`),
+  updateOrderStatus: (id: number, status: 'COOKING' | 'DELIVERING' | 'PAID') =>
+    http<OrderDetail>(`/api/orders/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
   getSales: (dateISO?: string) => http<SalesSummary>(`/api/sales${dateISO ? `?date=${encodeURIComponent(dateISO)}` : ''}`),
 };
 

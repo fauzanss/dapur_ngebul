@@ -5,26 +5,48 @@
 
 import { Platform } from 'react-native';
 
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
+// Dapur Ngebul Palette
+// Fire Red, Burnt Orange, Dark Brown, Warm Gold, Charcoal Black, Coffee Beige, Salmon Light
+const FireRed = '#B22222';
+const BurntOrange = '#FF8C00';
+const DarkBrown = '#3B1F0B';
+const WarmGold = '#D4A15E';
+const CharcoalBlack = '#1A1A1A';
+const CoffeeBeige = '#C6A77B';
+const SalmonLight = '#F4B07D';
+const SuccessGreen = '#2E7D32';
+
+const tintColorLight = FireRed;
+const tintColorDark = '#ffffff';
 
 export const Colors = {
   light: {
-    text: '#11181C',
-    background: '#fff',
+    text: CharcoalBlack,
+    background: CoffeeBeige,
     tint: tintColorLight,
-    icon: '#687076',
-    tabIconDefault: '#687076',
+    icon: WarmGold,
+    tabIconDefault: WarmGold,
     tabIconSelected: tintColorLight,
   },
   dark: {
     text: '#ECEDEE',
-    background: '#151718',
+    background: DarkBrown,
     tint: tintColorDark,
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
+    icon: WarmGold,
+    tabIconDefault: WarmGold,
     tabIconSelected: tintColorDark,
   },
+};
+
+export const Brand = {
+  FireRed,
+  BurntOrange,
+  DarkBrown,
+  WarmGold,
+  CharcoalBlack,
+  CoffeeBeige,
+  SalmonLight,
+  SuccessGreen,
 };
 
 export const Fonts = Platform.select({

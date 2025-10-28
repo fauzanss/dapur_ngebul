@@ -1,10 +1,12 @@
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
+import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api, SalesSummary } from '@/lib/api';
 
-const BRAND_PRIMARY = '#B22222';
-const BG_NEUTRAL = '#F7F7F7';
+import { Colors, Brand } from '@/constants/theme';
+const BRAND_PRIMARY = Brand.FireRed;
+const BG_NEUTRAL = Brand.CoffeeBeige;
 
 export default function SalesScreen() {
   const insets = useSafeAreaInsets();
@@ -30,8 +32,18 @@ export default function SalesScreen() {
     fetchSales();
   }, [dateISO]);
 
+  useFocusEffect(
+    useCallback(() => {
+      fetchSales();
+    }, [dateISO])
+  );
+
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <ScrollView
+      style={[styles.container, { paddingTop: insets.top }]}
+      contentContainerStyle={{ paddingBottom: 24 }}
+      refreshControl={<RefreshControl refreshing={loading} onRefresh={fetchSales} />}
+    >
       <View style={styles.header}>
         <Text style={styles.title}>Sales - {dateISO}</Text>
         <TouchableOpacity style={styles.refreshBtn} onPress={fetchSales}>
@@ -51,7 +63,7 @@ export default function SalesScreen() {
           <Text style={[styles.metricValue, { color: BRAND_PRIMARY }]}>{formatIDR(summary?.total ?? 0)}</Text>
         </View>
       )}
-    </View>
+    </ScrollView>
   );
 }
 
@@ -66,13 +78,13 @@ function formatIDR(n: number) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: BG_NEUTRAL },
   header: { paddingHorizontal: 16, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  title: { fontSize: 16, fontWeight: '800', color: '#222' },
-  refreshBtn: { backgroundColor: '#eee', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
-  refreshText: { color: '#333', fontWeight: '700' },
+  title: { fontSize: 16, fontWeight: '800', color: Brand.CharcoalBlack },
+  refreshBtn: { backgroundColor: Brand.SalmonLight, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
+  refreshText: { color: '#fff', fontWeight: '700' },
   errorText: { color: BRAND_PRIMARY, textAlign: 'center', marginTop: 24 },
   card: { margin: 16, backgroundColor: '#fff', borderRadius: 14, padding: 16, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 6, shadowOffset: { width: 0, height: 3 }, elevation: 2 },
-  metricLabel: { color: '#666', fontSize: 12 },
-  metricValue: { color: '#111', fontSize: 24, fontWeight: '900' },
+  metricLabel: { color: Brand.WarmGold, fontSize: 12 },
+  metricValue: { color: Brand.CharcoalBlack, fontSize: 24, fontWeight: '900' },
 });
 
 
