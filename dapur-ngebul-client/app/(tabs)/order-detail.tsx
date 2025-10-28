@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View, Linking } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import React, { useEffect, useState, useRef } from 'react';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View, Linking, Share } from 'react-native';
+import { useLocalSearchParams, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { captureRef } from 'react-native-view-shot';
 import { api, OrderDetail } from '@/lib/api';
 import { Brand } from '@/constants/theme';
 
@@ -14,6 +15,7 @@ export default function OrderDetailTabScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [detail, setDetail] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const viewRef = useRef<View>(null);
 
   const load = async () => {
     try {
@@ -67,6 +69,28 @@ export default function OrderDetailTabScreen() {
     });
   };
 
+  const shareReceipt = async () => {
+    if (!detail || !viewRef.current) return;
+
+    try {
+      // Capture screenshot dari order detail view
+      const uri = await captureRef(viewRef, {
+        format: 'png',
+        quality: 0.8,
+        result: 'tmpfile',
+      });
+
+      await Share.share({
+        url: uri,
+        title: 'Struk Pembelian Dapur Ngebul',
+        message: '📄 Struk pembelian dari Dapur Ngebul',
+      });
+    } catch (error) {
+      console.error('Error capturing screenshot:', error);
+      Alert.alert('Error', 'Gagal mengambil screenshot. Coba lagi.');
+    }
+  };
+
   if (loading) return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <ActivityIndicator color={BRAND_PRIMARY} style={{ marginTop: 24 }} />
@@ -80,75 +104,91 @@ export default function OrderDetailTabScreen() {
   );
 
   return (
-    <ScrollView style={[styles.container, { paddingTop: insets.top }]} contentContainerStyle={{ padding: 16, paddingBottom: 24 }}>
-      <View style={[styles.card, { backgroundColor: getStatusBackgroundColor(detail.status) }]}>
-        <Text style={styles.title}>Order #{detail.id}</Text>
-        <Text style={styles.orderUuid}>{detail.order_uuid}</Text>
-        {!!detail.customer_name && <Text style={styles.sub}>Customer: {detail.customer_name}</Text>}
-        <View style={styles.statusRow}>
-          <Text style={styles.statusLabel}>Status:</Text>
-          <Text style={[styles.statusValue, { color: statusColor(detail.status) }]}>{detail.status}</Text>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backButton} onPress={() => router.push('/(tabs)/orders')}>
+          <Text style={styles.backButtonText}>← Back</Text>
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Order Detail</Text>
+        <View style={styles.headerSpacer} />
+      </View>
+      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 24 }}>
+        <View ref={viewRef} style={styles.shareContainer}>
+          <View style={[styles.shareCard, { backgroundColor: getStatusBackgroundColor(detail.status) }]}>
+            <Text style={styles.title}>Order #{detail.id}</Text>
+            <Text style={styles.orderUuid}>{detail.order_uuid}</Text>
+            {!!detail.customer_name && <Text style={styles.sub}>Customer: {detail.customer_name}</Text>}
+            <View style={styles.statusRow}>
+              <Text style={styles.statusLabel}>Status:</Text>
+              <Text style={[styles.statusValue, { color: statusColor(detail.status) }]}>{detail.status}</Text>
+            </View>
+            {detail.status === 'CANCELLED' && (
+              <View style={styles.cancelledBadge}>
+                <Text style={styles.cancelledText}>❌ ORDER DIBATALKAN</Text>
+              </View>
+            )}
+          </View>
+
+          <View style={styles.shareCard}>
+            <Text style={styles.sectionTitle}>Item</Text>
+            <View style={styles.table}>
+              <View style={styles.tableHeader}>
+                <Text style={styles.tableHeaderText}>Item</Text>
+                <Text style={styles.tableHeaderText}>Qty</Text>
+                <Text style={styles.tableHeaderText}>Harga</Text>
+                <Text style={styles.tableHeaderText}>Total</Text>
+              </View>
+              {detail.items?.map(it => (
+                <View key={it.id} style={styles.tableRow}>
+                  <Text style={styles.tableCell}>{it.name}</Text>
+                  <Text style={styles.tableCell}>{it.quantity}</Text>
+                  <Text style={styles.tableCell}>{formatIDR(it.price)}</Text>
+                  <Text style={styles.tableCell}>{formatIDR(it.price * it.quantity)}</Text>
+                </View>
+              ))}
+            </View>
+            <View style={styles.totalRow}>
+              <Text style={{ fontWeight: '800' }}>Total</Text>
+              <Text style={{ fontWeight: '900', color: BRAND_PRIMARY }}>{formatIDR(detail.total_amount)}</Text>
+            </View>
+          </View>
         </View>
-        {detail.status === 'CANCELLED' && (
-          <View style={styles.cancelledBadge}>
-            <Text style={styles.cancelledText}>❌ ORDER DIBATALKAN</Text>
+
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Ubah Status</Text>
+          <View style={styles.statusButtonRow}>
+            <TouchableOpacity style={[styles.statusBtn, { borderColor: '#999' }]} onPress={() => changeStatus('CANCELLED')}>
+              <Text style={styles.statusIcon}>❌</Text>
+              <Text style={[styles.statusText, { color: '#555' }]}>Cancelled</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.statusBtn, { borderColor: ACCENT }]} onPress={() => changeStatus('DELIVERED')}>
+              <Text style={styles.statusIcon}>🚚</Text>
+              <Text style={[styles.statusText, { color: ACCENT }]}>Delivered</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.statusBtn, { borderColor: Brand.SuccessGreen }]} onPress={() => changeStatus('PAID')}>
+              <Text style={styles.statusIcon}>✅</Text>
+              <Text style={[styles.statusText, { color: Brand.SuccessGreen }]}>Paid</Text>
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.info}>Catatan: Hanya order berstatus PAID yang dihitung ke penjualan.</Text>
+        </View>
+
+        {(detail.status === 'DELIVERED' || detail.status === 'PAID') && (
+          <View style={styles.card}>
+            <Text style={styles.sectionTitle}>Cetak & Bagikan Struk</Text>
+            <View style={styles.buttonRow}>
+              <TouchableOpacity style={[styles.actionBtn, styles.printBtn]} onPress={printReceipt}>
+                <Text style={styles.actionBtnText}>🖨️ Print</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.actionBtn, styles.shareBtn]} onPress={shareReceipt}>
+                <Text style={styles.actionBtnText}>📱 Share</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.info}>Print ke printer termal atau bagikan via WhatsApp</Text>
           </View>
         )}
-      </View>
-
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Item</Text>
-        <View style={styles.table}>
-          <View style={styles.tableHeader}>
-            <Text style={styles.tableHeaderText}>Item</Text>
-            <Text style={styles.tableHeaderText}>Qty</Text>
-            <Text style={styles.tableHeaderText}>Harga</Text>
-            <Text style={styles.tableHeaderText}>Total</Text>
-          </View>
-          {detail.items?.map(it => (
-            <View key={it.id} style={styles.tableRow}>
-              <Text style={styles.tableCell}>{it.name}</Text>
-              <Text style={styles.tableCell}>{it.quantity}</Text>
-              <Text style={styles.tableCell}>{formatIDR(it.price)}</Text>
-              <Text style={styles.tableCell}>{formatIDR(it.price * it.quantity)}</Text>
-            </View>
-          ))}
-        </View>
-        <View style={styles.totalRow}>
-          <Text style={{ fontWeight: '800' }}>Total</Text>
-          <Text style={{ fontWeight: '900', color: BRAND_PRIMARY }}>{formatIDR(detail.total_amount)}</Text>
-        </View>
-      </View>
-
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Ubah Status</Text>
-        <View style={styles.statusButtonRow}>
-          <TouchableOpacity style={[styles.statusBtn, { borderColor: '#999' }]} onPress={() => changeStatus('CANCELLED')}>
-            <Text style={styles.statusIcon}>❌</Text>
-            <Text style={[styles.statusText, { color: '#555' }]}>Cancelled</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.statusBtn, { borderColor: ACCENT }]} onPress={() => changeStatus('DELIVERED')}>
-            <Text style={styles.statusIcon}>🚚</Text>
-            <Text style={[styles.statusText, { color: ACCENT }]}>Delivered</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.statusBtn, { borderColor: Brand.SuccessGreen }]} onPress={() => changeStatus('PAID')}>
-            <Text style={styles.statusIcon}>✅</Text>
-            <Text style={[styles.statusText, { color: Brand.SuccessGreen }]}>Paid</Text>
-          </TouchableOpacity>
-        </View>
-        <Text style={styles.info}>Catatan: Hanya order berstatus PAID yang dihitung ke penjualan.</Text>
-      </View>
-
-      {(detail.status === 'DELIVERED' || detail.status === 'PAID') && (
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Cetak Struk</Text>
-          <TouchableOpacity style={styles.printBtn} onPress={printReceipt}>
-            <Text style={styles.printBtnText}>🖨️ Cetak Struk</Text>
-          </TouchableOpacity>
-          <Text style={styles.info}>Struk akan dicetak ke printer termal yang terhubung</Text>
-        </View>
-      )}
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -217,6 +257,63 @@ function generateReceiptText(data: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: BG },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  backButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: Brand.FireRed,
+  },
+  backButtonText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  headerTitle: {
+    flex: 1,
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#222',
+    textAlign: 'center',
+  },
+  headerSpacer: {
+    width: 60, // Same width as back button to center title
+  },
+  shareContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
+  shareCard: {
+    backgroundColor: 'transparent',
+    borderRadius: 0,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: 'transparent',
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 0,
+  },
   card: { backgroundColor: '#fff', borderRadius: 12, padding: 14, marginBottom: 12, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 6, shadowOffset: { width: 0, height: 3 }, elevation: 2 },
   title: { fontSize: 18, fontWeight: '900', color: '#222' },
   orderUuid: { fontSize: 12, color: '#999', marginTop: 2, textAlign: 'center' },
@@ -284,8 +381,29 @@ const styles = StyleSheet.create({
     fontSize: 12
   },
   info: { marginTop: 10, fontSize: 12, color: '#666' },
-  printBtn: { backgroundColor: Brand.FireRed, paddingVertical: 12, paddingHorizontal: 16, borderRadius: 12, alignItems: 'center', marginTop: 8 },
-  printBtnText: { color: '#fff', fontWeight: '800', fontSize: 16 },
+  buttonRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 8,
+  },
+  actionBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  printBtn: {
+    backgroundColor: Brand.FireRed,
+  },
+  shareBtn: {
+    backgroundColor: Brand.SuccessGreen,
+  },
+  actionBtnText: {
+    color: '#fff',
+    fontWeight: '800',
+    fontSize: 16,
+  },
 });
 
 
