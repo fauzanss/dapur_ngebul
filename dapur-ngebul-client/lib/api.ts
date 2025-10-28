@@ -49,9 +49,11 @@ export type OrderDetail = OrderSummary & {
 };
 
 export type SalesSummary = {
-  date: string;
+  date?: string;
   total: number;
   count: number;
+  startDate?: string;
+  endDate?: string;
 };
 
 async function http<T>(path: string, init?: RequestInit): Promise<T> {
@@ -90,6 +92,8 @@ export const api = {
   updateOrderStatus: (id: number, status: 'COOKING' | 'DELIVERED' | 'PAID' | 'CANCELLED') =>
     http<OrderDetail>(`/api/orders/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
   getSales: (dateISO?: string) => http<SalesSummary>(`/api/sales${dateISO ? `?date=${encodeURIComponent(dateISO)}` : ''}`),
+  getSalesRange: (startDate: string, endDate: string) =>
+    http<SalesSummary>(`/api/sales/range?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`),
 };
 
 

@@ -6,5 +6,6 @@ router.get('/', salesController.summary);
 router.get('/today', salesController.today);
 router.get('/month-to-date', salesController.monthToDate);
 router.get('/all-time', salesController.allTime);
+router.get('/range', salesController.range);
 
 module.exports = router;
