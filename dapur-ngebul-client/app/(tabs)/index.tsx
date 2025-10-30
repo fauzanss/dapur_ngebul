@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
-import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View, Image } from 'react-native';
+import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View, Image, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, Brand } from '@/constants/theme';
 import { api, SalesSummary } from '@/lib/api';
@@ -279,7 +279,7 @@ export default function HomeScreen() {
 
   return (
     <ScrollView
-      style={[styles.container, { paddingTop: insets.top }]}
+      style={[styles.container, Platform.OS === 'web' && styles.containerWeb, { paddingTop: insets.top }]}
       contentContainerStyle={styles.content}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Brand.FireRed} />}
     >
@@ -314,6 +314,7 @@ const BG_NEUTRAL = Brand.CoffeeBeige;
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Brand.CoffeeBeige },
+  containerWeb: { marginHorizontal: 12, marginTop: 12, marginBottom: 12 },
   content: { padding: 16, paddingBottom: 24 },
   errorText: { color: Brand.FireRed, marginTop: 24, textAlign: 'center' },
 

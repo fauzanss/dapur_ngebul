@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View, ScrollView, Modal, TextInput } from 'react-native';
+import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View, ScrollView, Modal, TextInput, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api, MenuItem } from '@/lib/api';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -182,7 +182,7 @@ export default function MenuScreen() {
   );
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, Platform.OS === 'web' && styles.containerWeb, { paddingTop: insets.top }]}>
       <View style={styles.content}>
         <TextInput
           value={searchQuery}
@@ -246,6 +246,7 @@ const BG_NEUTRAL = '#F7F7F7';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: BG_NEUTRAL, paddingBottom: 84 },
+  containerWeb: { marginHorizontal: 12, marginTop: 12, marginBottom: 12 },
   content: { flex: 1 },
   searchInput: { marginHorizontal: 12, marginTop: 8, marginBottom: 4, borderWidth: 1, borderColor: '#eee', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, backgroundColor: '#fff' },
   listContent: { padding: 12, paddingBottom: 24, gap: 12 },

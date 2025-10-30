@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
-import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View, Modal, Alert, TextInput } from 'react-native';
+import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View, Modal, Alert, TextInput, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api, SalesSummary } from '@/lib/api';
 import * as FileSystem from 'expo-file-system';
@@ -119,7 +119,23 @@ ${financialData.period},${summary.totalAmount},${summary.totalOrders},${financia
           dialogTitle: 'Export Laporan Keuangan',
         });
       } else {
-        Alert.alert('Error', 'Sharing tidak tersedia di perangkat ini');
+        if (Platform.OS === 'web') {
+          try {
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', fileName);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+          } catch (e) {
+            Alert.alert('Error', 'Gagal mengunduh file di web');
+          }
+        } else {
+          Alert.alert('Error', 'Sharing tidak tersedia di perangkat ini');
+        }
       }
     } catch (error) {
       Alert.alert('Error', 'Gagal mengexport data');
@@ -128,7 +144,7 @@ ${financialData.period},${summary.totalAmount},${summary.totalOrders},${financia
 
   return (
     <ScrollView
-      style={[styles.container, { paddingTop: insets.top }]}
+      style={[styles.container, Platform.OS === 'web' && styles.containerWeb, { paddingTop: insets.top }]}
       contentContainerStyle={{ paddingBottom: 24 }}
       refreshControl={<RefreshControl refreshing={loading} onRefresh={fetchSales} />}
     >
@@ -161,21 +177,48 @@ ${financialData.period},${summary.totalAmount},${summary.totalOrders},${financia
               <Text style={styles.dateIcon}>📅</Text>
             </TouchableOpacity>
             {showStartDatePicker && (
-              <DateTimePicker
-                value={startDate}
-                mode="date"
-                display="default"
-                onChange={(event, selectedDate) => {
-                  setShowStartDatePicker(false);
-                  if (selectedDate) {
-                    setStartDate(selectedDate);
-                    // Auto-set end date if it's before start date
-                    if (endDate < selectedDate) {
-                      setEndDate(selectedDate);
+              Platform.OS === 'web' ? (
+                // @ts-ignore - using native input for web environment
+                <input
+                  type="date"
+                  value={startDate.toISOString().slice(0, 10)}
+                  onChange={(e: any) => {
+                    const v = e?.target?.value;
+                    setShowStartDatePicker(false);
+                    if (v) {
+                      const selectedDate = new Date(v);
+                      setStartDate(selectedDate);
+                      if (endDate < selectedDate) {
+                        setEndDate(selectedDate);
+                      }
                     }
-                  }
-                }}
-              />
+                  }}
+                  style={{
+                    width: '100%',
+                    fontSize: 16,
+                    padding: 10,
+                    borderRadius: 8,
+                    border: '1px solid #e0e0e0',
+                    marginTop: 8,
+                  }}
+                />
+              ) : (
+                <DateTimePicker
+                  value={startDate}
+                  mode="date"
+                  display="default"
+                  onChange={(event, selectedDate) => {
+                    setShowStartDatePicker(false);
+                    if (selectedDate) {
+                      setStartDate(selectedDate);
+                      // Auto-set end date if it's before start date
+                      if (endDate < selectedDate) {
+                        setEndDate(selectedDate);
+                      }
+                    }
+                  }}
+                />
+              )
             )}
           </View>
 
@@ -196,16 +239,41 @@ ${financialData.period},${summary.totalAmount},${summary.totalOrders},${financia
               <Text style={styles.dateIcon}>📅</Text>
             </TouchableOpacity>
             {showEndDatePicker && (
-              <DateTimePicker
-                value={endDate}
-                mode="date"
-                display="default"
-                minimumDate={startDate}
-                onChange={(event, selectedDate) => {
-                  setShowEndDatePicker(false);
-                  if (selectedDate) setEndDate(selectedDate);
-                }}
-              />
+              Platform.OS === 'web' ? (
+                // @ts-ignore - using native input for web environment
+                <input
+                  type="date"
+                  value={endDate.toISOString().slice(0, 10)}
+                  min={startDate.toISOString().slice(0, 10)}
+                  onChange={(e: any) => {
+                    const v = e?.target?.value;
+                    setShowEndDatePicker(false);
+                    if (v) {
+                      const selectedDate = new Date(v);
+                      setEndDate(selectedDate);
+                    }
+                  }}
+                  style={{
+                    width: '100%',
+                    fontSize: 16,
+                    padding: 10,
+                    borderRadius: 8,
+                    border: '1px solid #e0e0e0',
+                    marginTop: 8,
+                  }}
+                />
+              ) : (
+                <DateTimePicker
+                  value={endDate}
+                  mode="date"
+                  display="default"
+                  minimumDate={startDate}
+                  onChange={(event, selectedDate) => {
+                    setShowEndDatePicker(false);
+                    if (selectedDate) setEndDate(selectedDate);
+                  }}
+                />
+              )
             )}
           </View>
         </View>
@@ -322,6 +390,7 @@ function formatIDR(n: number) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: BG_NEUTRAL },
+  containerWeb: { marginHorizontal: 12, marginTop: 12, marginBottom: 12 },
   header: { paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#fff', marginBottom: 16, borderRadius: 12, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
   title: { fontSize: 20, fontWeight: '900', color: Brand.CharcoalBlack, textAlign: 'center' },
   errorText: { color: BRAND_PRIMARY, textAlign: 'center', marginTop: 24 },

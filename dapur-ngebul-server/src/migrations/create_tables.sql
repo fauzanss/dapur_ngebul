@@ -1,66 +1,77 @@
-CREATE DATABASE IF NOT EXISTS dapur_ngebul;
-USE dapur_ngebul;
-
-CREATE TABLE IF NOT EXISTS menu_items (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  sku VARCHAR(50) UNIQUE,
-  name VARCHAR(255) NOT NULL,
-  description TEXT,
-  price DECIMAL(10,2) NOT NULL,
-  category VARCHAR(100),
-  available BOOLEAN DEFAULT TRUE,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+create table if not exists menu_items
+(
+    id          int auto_increment
+        primary key,
+    sku         varchar(50)                          null,
+    name        varchar(255)                         not null,
+    description text                                 null,
+    price       decimal(10, 2)                       not null,
+    category    varchar(100)                         null,
+    available   tinyint(1) default 1                 null,
+    created_at  timestamp  default CURRENT_TIMESTAMP null,
+    updated_at  timestamp  default CURRENT_TIMESTAMP null on update CURRENT_TIMESTAMP,
+    constraint sku
+        unique (sku)
 );
 
-CREATE TABLE IF NOT EXISTS orders (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  order_uuid VARCHAR(36) NOT NULL,
-  total_amount DECIMAL(12,2) NOT NULL,
-  paid_amount DECIMAL(12,2),
-  status VARCHAR(50) DEFAULT 'PENDING',
-  cashier VARCHAR(100),
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+create table if not exists orders
+(
+    id            int auto_increment
+        primary key,
+    order_uuid    varchar(36)                           not null,
+    total_amount  decimal(12, 2)                        not null,
+    paid_amount   decimal(12, 2)                        null,
+    status        varchar(50) default 'PENDING'         null,
+    cashier       varchar(100)                          null,
+    customer_name varchar(100)                          null,
+    created_at    timestamp   default CURRENT_TIMESTAMP null
 );
 
-CREATE TABLE IF NOT EXISTS order_items (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  order_id INT NOT NULL,
-  menu_item_id INT NOT NULL,
-  name VARCHAR(255),
-  price DECIMAL(10,2),
-  quantity INT DEFAULT 1,
-  note TEXT,
-  FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
-  FOREIGN KEY (menu_item_id) REFERENCES menu_items(id)
+create table if not exists order_items
+(
+    id           int auto_increment
+        primary key,
+    order_id     int            not null,
+    menu_item_id int            not null,
+    name         varchar(255)   null,
+    price        decimal(10, 2) null,
+    quantity     int default 1  null,
+    note         text           null,
+    constraint order_items_ibfk_1
+        foreign key (order_id) references orders (id)
+            on delete cascade,
+    constraint order_items_ibfk_2
+        foreign key (menu_item_id) references menu_items (id)
 );
 
-CREATE TABLE IF NOT EXISTS sales_records (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  order_id INT NOT NULL,
-  date DATE,
-  total DECIMAL(12,2),
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (order_id) REFERENCES orders(id)
+create index menu_item_id
+    on order_items (menu_item_id);
+
+create index order_id
+    on order_items (order_id);
+
+create table if not exists printer_configs
+(
+    id         int auto_increment
+        primary key,
+    name       varchar(255)                        null,
+    type       varchar(50)                         null,
+    address    varchar(255)                        null,
+    created_at timestamp default CURRENT_TIMESTAMP null
 );
 
-CREATE TABLE IF NOT EXISTS printer_configs (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  name VARCHAR(255),
-  type VARCHAR(50),
-  address VARCHAR(255),
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+create table if not exists sales_records
+(
+    id         int auto_increment
+        primary key,
+    order_id   int                                 not null,
+    date       date                                null,
+    total      decimal(12, 2)                      null,
+    created_at timestamp default CURRENT_TIMESTAMP null,
+    constraint sales_records_ibfk_1
+        foreign key (order_id) references orders (id)
 );
 
-INSERT INTO menu_items (sku, name, description, price, category)
-SELECT * FROM (SELECT 'DNB-001' as sku, 'Seblak Original' as name, 'Seblak pedas original' as description, 15000.00 as price, 'Seblak' as category) AS tmp
-WHERE NOT EXISTS (SELECT 1 FROM menu_items WHERE sku='DNB-001') LIMIT 1;
-INSERT INTO menu_items (sku, name, description, price, category)
-SELECT * FROM (SELECT 'DNB-002', 'Seblak Keju', 'Seblak dengan topping keju', 18000.00, 'Seblak') AS tmp
-WHERE NOT EXISTS (SELECT 1 FROM menu_items WHERE sku='DNB-002') LIMIT 1;
-INSERT INTO menu_items (sku, name, description, price, category)
-SELECT * FROM (SELECT 'DNB-003', 'Bakso Goreng', 'Bakso kriuk', 12000.00, 'Cemilan') AS tmp
-WHERE NOT EXISTS (SELECT 1 FROM menu_items WHERE sku='DNB-003') LIMIT 1;
-INSERT INTO menu_items (sku, name, description, price, category)
-SELECT * FROM (SELECT 'DNB-004', 'Es Teh Manis', 'Es teh gula aren', 7000.00, 'Minuman') AS tmp
-WHERE NOT EXISTS (SELECT 1 FROM menu_items WHERE sku='DNB-004') LIMIT 1;
+create index order_id
+    on sales_records (order_id);
+

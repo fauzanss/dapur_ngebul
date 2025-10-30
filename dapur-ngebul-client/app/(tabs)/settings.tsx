@@ -1,5 +1,5 @@
 import React from 'react';
-import { RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { RefreshControl, ScrollView, StyleSheet, Text, TextInput, View, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { API_BASE } from '@/constants/config';
 import { Colors, Brand } from '@/constants/theme';
@@ -15,7 +15,7 @@ export default function SettingsScreen() {
   };
   return (
     <ScrollView
-      style={[styles.container, { paddingTop: insets.top }]}
+      style={[styles.container, Platform.OS === 'web' && styles.containerWeb, { paddingTop: insets.top }]}
       contentContainerStyle={{ paddingBottom: 24 }}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
     >
@@ -35,6 +35,7 @@ export default function SettingsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Brand.CoffeeBeige, padding: 16 },
+  containerWeb: { marginHorizontal: 12, marginTop: 12, marginBottom: 12 },
   title: { fontSize: 18, fontWeight: '900', color: Brand.CharcoalBlack },
   card: { backgroundColor: '#fff', marginTop: 16, borderRadius: 14, padding: 16, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 6, shadowOffset: { width: 0, height: 3 }, elevation: 2 },
   label: { color: Brand.WarmGold, fontSize: 12 },

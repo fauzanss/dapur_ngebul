@@ -79,7 +79,7 @@ export default function OrdersScreen() {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, Platform.OS === 'web' && styles.containerWeb, { paddingTop: insets.top }]}>
       <View style={styles.header}>
         <Text style={styles.title}>Orders</Text>
       </View>
@@ -300,6 +300,7 @@ function statusColor(status?: string) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: BG_NEUTRAL },
+  containerWeb: { marginHorizontal: 12, marginTop: 12, marginBottom: 12 },
   header: { paddingHorizontal: 16, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start' },
   title: { fontSize: 16, fontWeight: '800', color: Brand.CharcoalBlack },
   filterSection: {
