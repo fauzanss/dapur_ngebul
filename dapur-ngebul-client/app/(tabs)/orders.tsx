@@ -147,12 +147,12 @@ export default function OrdersScreen() {
         animationType="slide"
         onRequestClose={() => setShowFilterModal(false)}
       >
-        <View style={styles.modalOverlay}>
+        <View style={[styles.modalOverlay, Platform.OS === 'web' && styles.modalOverlayWeb]}>
           <Pressable
             style={styles.modalBackdrop}
             onPress={() => setShowFilterModal(false)}
           />
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, Platform.OS === 'web' && styles.modalContentWeb]}>
             <Text style={styles.modalTitle}>Filter Orders</Text>
 
             <View style={styles.filterGroup}>
@@ -220,18 +220,37 @@ export default function OrdersScreen() {
               style={styles.datePickerBackdrop}
               onPress={() => setShowDatePicker(false)}
             />
-            <View style={styles.datePickerContent}>
+            <View style={[styles.datePickerContent, Platform.OS === 'web' && styles.datePickerContentWeb]}>
               <Text style={styles.datePickerTitle}>Pilih Tanggal Order</Text>
-              <DateTimePicker
-                value={new Date(tempDateISO)}
-                mode="date"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                onChange={(event: any, selectedDate?: Date) => {
-                  if (selectedDate) {
-                    setTempDateISO(selectedDate.toISOString().slice(0, 10));
-                  }
-                }}
-              />
+              {Platform.OS === 'web' ? (
+                // @ts-ignore - using native input for web environment
+                <input
+                  type="date"
+                  value={tempDateISO}
+                  onChange={(e: any) => {
+                    const v = e?.target?.value;
+                    if (v) setTempDateISO(v);
+                  }}
+                  style={{
+                    width: '100%',
+                    fontSize: 16,
+                    padding: 10,
+                    borderRadius: 8,
+                    border: '1px solid #e0e0e0',
+                  }}
+                />
+              ) : (
+                <DateTimePicker
+                  value={new Date(tempDateISO)}
+                  mode="date"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  onChange={(event: any, selectedDate?: Date) => {
+                    if (selectedDate) {
+                      setTempDateISO(selectedDate.toISOString().slice(0, 10));
+                    }
+                  }}
+                />
+              )}
               <View style={styles.datePickerActions}>
                 <TouchableOpacity
                   style={styles.datePickerCancel}
@@ -327,6 +346,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
   },
+  modalOverlayWeb: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
   modalBackdrop: {
     position: 'absolute',
     top: 0,
@@ -340,6 +364,19 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
     padding: 20,
     maxHeight: '70%',
+  },
+  modalContentWeb: {
+    borderRadius: 16,
+    width: '90%',
+    maxWidth: 430,
+    borderWidth: 2,
+    borderColor: '#000000',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 12,
   },
   modalTitle: {
     fontSize: 18,
@@ -507,6 +544,18 @@ const styles = StyleSheet.create({
     margin: 20,
     minWidth: 300,
     alignItems: 'center',
+  },
+  datePickerContentWeb: {
+    width: '90%',
+    maxWidth: 430,
+    borderWidth: 2,
+    borderColor: '#000000',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 12,
   },
   datePickerTitle: {
     fontSize: 18,

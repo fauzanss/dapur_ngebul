@@ -18,6 +18,11 @@ const MAPPING = {
   'paperplane.fill': 'send',
   'chevron.left.forwardslash.chevron.right': 'code',
   'chevron.right': 'chevron-right',
+  // App-specific additions for tabs on web/Android
+  'list.bullet.rectangle': 'list',
+  'doc.text.magnifyingglass': 'find-in-page',
+  'chart.bar.fill': 'insert-chart',
+  'gearshape.fill': 'settings',
 } as IconMapping;
 
 /**
