@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View, Modal, Alert, TextInput, Platform } from 'react-native';
+import { ConnectionError } from '@/components/connection-error';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api, SalesSummary } from '@/lib/api';
 import * as FileSystem from 'expo-file-system';
@@ -50,7 +51,7 @@ export default function SalesScreen() {
         period: dateISO
       });
     } catch (e) {
-      setError('Gagal memuat ringkasan penjualan.');
+      setError('📶 Gagal memuat ringkasan penjualan. Periksa koneksi dan coba lagi.');
     } finally {
       setLoading(false);
     }
@@ -82,7 +83,7 @@ export default function SalesScreen() {
       });
 
     } catch (e) {
-      setError('Gagal memuat laporan keuangan.');
+      setError('📶 Gagal memuat laporan keuangan. Periksa koneksi dan coba lagi.');
     } finally {
       setLoading(false);
     }
@@ -148,233 +149,240 @@ ${financialData.period},${summary.totalAmount},${summary.totalOrders},${financia
       contentContainerStyle={{ paddingBottom: 24 }}
       refreshControl={<RefreshControl refreshing={loading} onRefresh={fetchSales} />}
     >
-      <View style={styles.header}>
-        <Text style={styles.title}>📊 Laporan Keuangan</Text>
-      </View>
-
-      <View style={styles.periodInfo}>
-        <Text style={styles.periodText}>Periode: {financialData?.period || 'Belum dipilih'}</Text>
-      </View>
-
-      <View style={styles.rangeSection}>
-        <Text style={styles.sectionTitle}>📅 Pilih Periode Laporan</Text>
-
-        <View style={styles.dateRow}>
-          <View style={styles.dateInputContainer}>
-            <Text style={styles.dateLabel}>📅 Tanggal Mulai</Text>
-            <TouchableOpacity
-              style={styles.dateInput}
-              onPress={() => setShowStartDatePicker(true)}
-            >
-              <Text style={styles.dateInputText}>
-                {startDate.toLocaleDateString('id-ID', {
-                  weekday: 'short',
-                  year: 'numeric',
-                  month: 'short',
-                  day: 'numeric'
-                })}
-              </Text>
-              <Text style={styles.dateIcon}>📅</Text>
-            </TouchableOpacity>
-            {showStartDatePicker && (
-              Platform.OS === 'web' ? (
-                // @ts-ignore - using native input for web environment
-                <input
-                  type="date"
-                  value={startDate.toISOString().slice(0, 10)}
-                  onChange={(e: any) => {
-                    const v = e?.target?.value;
-                    setShowStartDatePicker(false);
-                    if (v) {
-                      const selectedDate = new Date(v);
-                      setStartDate(selectedDate);
-                      if (endDate < selectedDate) {
-                        setEndDate(selectedDate);
-                      }
-                    }
-                  }}
-                  style={{
-                    width: '100%',
-                    fontSize: 16,
-                    padding: 10,
-                    borderRadius: 8,
-                    border: '1px solid #e0e0e0',
-                    marginTop: 8,
-                  }}
-                />
-              ) : (
-                <DateTimePicker
-                  value={startDate}
-                  mode="date"
-                  display="default"
-                  onChange={(event, selectedDate) => {
-                    setShowStartDatePicker(false);
-                    if (selectedDate) {
-                      setStartDate(selectedDate);
-                      // Auto-set end date if it's before start date
-                      if (endDate < selectedDate) {
-                        setEndDate(selectedDate);
-                      }
-                    }
-                  }}
-                />
-              )
-            )}
-          </View>
-
-          <View style={styles.dateInputContainer}>
-            <Text style={styles.dateLabel}>📅 Tanggal Akhir</Text>
-            <TouchableOpacity
-              style={styles.dateInput}
-              onPress={() => setShowEndDatePicker(true)}
-            >
-              <Text style={styles.dateInputText}>
-                {endDate.toLocaleDateString('id-ID', {
-                  weekday: 'short',
-                  year: 'numeric',
-                  month: 'short',
-                  day: 'numeric'
-                })}
-              </Text>
-              <Text style={styles.dateIcon}>📅</Text>
-            </TouchableOpacity>
-            {showEndDatePicker && (
-              Platform.OS === 'web' ? (
-                // @ts-ignore - using native input for web environment
-                <input
-                  type="date"
-                  value={endDate.toISOString().slice(0, 10)}
-                  min={startDate.toISOString().slice(0, 10)}
-                  onChange={(e: any) => {
-                    const v = e?.target?.value;
-                    setShowEndDatePicker(false);
-                    if (v) {
-                      const selectedDate = new Date(v);
-                      setEndDate(selectedDate);
-                    }
-                  }}
-                  style={{
-                    width: '100%',
-                    fontSize: 16,
-                    padding: 10,
-                    borderRadius: 8,
-                    border: '1px solid #e0e0e0',
-                    marginTop: 8,
-                  }}
-                />
-              ) : (
-                <DateTimePicker
-                  value={endDate}
-                  mode="date"
-                  display="default"
-                  minimumDate={startDate}
-                  onChange={(event, selectedDate) => {
-                    setShowEndDatePicker(false);
-                    if (selectedDate) setEndDate(selectedDate);
-                  }}
-                />
-              )
-            )}
-          </View>
-        </View>
-
-        <View style={styles.costInputContainer}>
-          <Text style={styles.costLabel}>💰 Total Modal/Biaya (Opsional)</Text>
-          <View style={styles.costInputWrapper}>
-            <Text style={styles.currencySymbol}>Rp</Text>
-            <TextInput
-              style={styles.costInput}
-              value={customCosts}
-              onChangeText={setCustomCosts}
-              placeholder="0"
-              keyboardType="numeric"
-              placeholderTextColor="#999"
-            />
-          </View>
-          <Text style={styles.costHint}>
-            💡 Kosongkan untuk menggunakan 60% dari penjualan sebagai estimasi
-          </Text>
-        </View>
-
-        <TouchableOpacity style={styles.generateBtn} onPress={fetchSalesRange}>
-          <Text style={styles.generateBtnText}>📊 Generate Laporan</Text>
-          <Text style={styles.generateBtnSubtext}>Hitung keuntungan berdasarkan periode</Text>
-        </TouchableOpacity>
-      </View>
-
-      {financialData && (
-        <View style={styles.financialSection}>
-          <Text style={styles.sectionTitle}>📊 Hasil Analisis Keuangan</Text>
-
-          <View style={styles.financialGrid}>
-            <View style={[styles.financialCard, styles.revenueCard]}>
-              <View style={styles.financialIconContainer}>
-                <Text style={styles.financialIcon}>💰</Text>
-              </View>
-              <View style={styles.financialContent}>
-                <Text style={styles.financialLabel}>Total Penjualan</Text>
-                <Text style={styles.financialValue}>{formatIDR(financialData.revenue)}</Text>
-                <Text style={styles.financialSubtext}>Pendapatan kotor</Text>
-              </View>
-            </View>
-
-            <View style={[styles.financialCard, styles.costCard]}>
-              <View style={styles.financialIconContainer}>
-                <Text style={styles.financialIcon}>💸</Text>
-              </View>
-              <View style={styles.financialContent}>
-                <Text style={styles.financialLabel}>Biaya Operasional</Text>
-                <Text style={styles.financialValue}>{formatIDR(financialData.costs)}</Text>
-                <Text style={styles.financialSubtext}>Modal & biaya</Text>
-              </View>
-            </View>
-
-            <View style={[styles.financialCard, styles.profitCard, {
-              backgroundColor: financialData.profit >= 0 ? Brand.SuccessGreen + '15' : Brand.FireRed + '15',
-              borderColor: financialData.profit >= 0 ? Brand.SuccessGreen : Brand.FireRed
-            }]}>
-              <View style={styles.financialIconContainer}>
-                <Text style={styles.financialIcon}>📈</Text>
-              </View>
-              <View style={styles.financialContent}>
-                <Text style={styles.financialLabel}>Keuntungan Bersih</Text>
-                <Text style={[styles.financialValue, { color: financialData.profit >= 0 ? Brand.SuccessGreen : Brand.FireRed }]}>
-                  {formatIDR(financialData.profit)}
-                </Text>
-                <Text style={styles.financialSubtext}>
-                  {financialData.profit >= 0 ? 'Untung' : 'Rugi'}
-                </Text>
-              </View>
-            </View>
-
-            <View style={[styles.financialCard, styles.marginCard, {
-              backgroundColor: financialData.profitMargin >= 0 ? Brand.SuccessGreen + '15' : Brand.FireRed + '15',
-              borderColor: financialData.profitMargin >= 0 ? Brand.SuccessGreen : Brand.FireRed
-            }]}>
-              <View style={styles.financialIconContainer}>
-                <Text style={styles.financialIcon}>📊</Text>
-              </View>
-              <View style={styles.financialContent}>
-                <Text style={styles.financialLabel}>Margin Keuntungan</Text>
-                <Text style={[styles.financialValue, { color: financialData.profitMargin >= 0 ? Brand.SuccessGreen : Brand.FireRed }]}>
-                  {financialData.profitMargin.toFixed(2)}%
-                </Text>
-                <Text style={styles.financialSubtext}>
-                  {financialData.profitMargin >= 0 ? 'Efisien' : 'Perlu evaluasi'}
-                </Text>
-              </View>
-            </View>
-          </View>
-        </View>
+      {error && (
+        <ConnectionError message={error} onRetry={fetchSales} />
       )}
+      {!error && (
+        <>
+          <View style={styles.header}>
+            <Text style={styles.title}>📊 Laporan Keuangan</Text>
+          </View>
 
-      {financialData && (
-        <View style={styles.exportSection}>
-          <TouchableOpacity style={styles.exportBtn} onPress={exportToExcel}>
-            <Text style={styles.exportBtnText}>📤 Export ke Excel</Text>
-            <Text style={styles.exportBtnSubtext}>Download laporan lengkap</Text>
-          </TouchableOpacity>
-        </View>
+          <View style={styles.periodInfo}>
+            <Text style={styles.periodText}>Periode: {financialData?.period || 'Belum dipilih'}</Text>
+          </View>
+
+          <View style={styles.rangeSection}>
+            <Text style={styles.sectionTitle}>📅 Pilih Periode Laporan</Text>
+
+            <View style={styles.dateRow}>
+              <View style={styles.dateInputContainer}>
+                <Text style={styles.dateLabel}>📅 Tanggal Mulai</Text>
+                <TouchableOpacity
+                  style={styles.dateInput}
+                  onPress={() => setShowStartDatePicker(true)}
+                >
+                  <Text style={styles.dateInputText}>
+                    {startDate.toLocaleDateString('id-ID', {
+                      weekday: 'short',
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric'
+                    })}
+                  </Text>
+                  <Text style={styles.dateIcon}>📅</Text>
+                </TouchableOpacity>
+                {showStartDatePicker && (
+                  Platform.OS === 'web' ? (
+                    // @ts-ignore - using native input for web environment
+                    <input
+                      type="date"
+                      value={startDate.toISOString().slice(0, 10)}
+                      onChange={(e: any) => {
+                        const v = e?.target?.value;
+                        setShowStartDatePicker(false);
+                        if (v) {
+                          const selectedDate = new Date(v);
+                          setStartDate(selectedDate);
+                          if (endDate < selectedDate) {
+                            setEndDate(selectedDate);
+                          }
+                        }
+                      }}
+                      style={{
+                        width: '100%',
+                        fontSize: 16,
+                        padding: 10,
+                        borderRadius: 8,
+                        border: '1px solid #e0e0e0',
+                        marginTop: 8,
+                      }}
+                    />
+                  ) : (
+                    <DateTimePicker
+                      value={startDate}
+                      mode="date"
+                      display="default"
+                      onChange={(event, selectedDate) => {
+                        setShowStartDatePicker(false);
+                        if (selectedDate) {
+                          setStartDate(selectedDate);
+                          // Auto-set end date if it's before start date
+                          if (endDate < selectedDate) {
+                            setEndDate(selectedDate);
+                          }
+                        }
+                      }}
+                    />
+                  )
+                )}
+              </View>
+
+              <View style={styles.dateInputContainer}>
+                <Text style={styles.dateLabel}>📅 Tanggal Akhir</Text>
+                <TouchableOpacity
+                  style={styles.dateInput}
+                  onPress={() => setShowEndDatePicker(true)}
+                >
+                  <Text style={styles.dateInputText}>
+                    {endDate.toLocaleDateString('id-ID', {
+                      weekday: 'short',
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric'
+                    })}
+                  </Text>
+                  <Text style={styles.dateIcon}>📅</Text>
+                </TouchableOpacity>
+                {showEndDatePicker && (
+                  Platform.OS === 'web' ? (
+                    // @ts-ignore - using native input for web environment
+                    <input
+                      type="date"
+                      value={endDate.toISOString().slice(0, 10)}
+                      min={startDate.toISOString().slice(0, 10)}
+                      onChange={(e: any) => {
+                        const v = e?.target?.value;
+                        setShowEndDatePicker(false);
+                        if (v) {
+                          const selectedDate = new Date(v);
+                          setEndDate(selectedDate);
+                        }
+                      }}
+                      style={{
+                        width: '100%',
+                        fontSize: 16,
+                        padding: 10,
+                        borderRadius: 8,
+                        border: '1px solid #e0e0e0',
+                        marginTop: 8,
+                      }}
+                    />
+                  ) : (
+                    <DateTimePicker
+                      value={endDate}
+                      mode="date"
+                      display="default"
+                      minimumDate={startDate}
+                      onChange={(event, selectedDate) => {
+                        setShowEndDatePicker(false);
+                        if (selectedDate) setEndDate(selectedDate);
+                      }}
+                    />
+                  )
+                )}
+              </View>
+            </View>
+
+            <View style={styles.costInputContainer}>
+              <Text style={styles.costLabel}>💰 Total Modal/Biaya (Opsional)</Text>
+              <View style={styles.costInputWrapper}>
+                <Text style={styles.currencySymbol}>Rp</Text>
+                <TextInput
+                  style={styles.costInput}
+                  value={customCosts}
+                  onChangeText={setCustomCosts}
+                  placeholder="0"
+                  keyboardType="numeric"
+                  placeholderTextColor="#999"
+                />
+              </View>
+              <Text style={styles.costHint}>
+                💡 Kosongkan untuk menggunakan 60% dari penjualan sebagai estimasi
+              </Text>
+            </View>
+
+            <TouchableOpacity style={styles.generateBtn} onPress={fetchSalesRange}>
+              <Text style={styles.generateBtnText}>📊 Generate Laporan</Text>
+              <Text style={styles.generateBtnSubtext}>Hitung keuntungan berdasarkan periode</Text>
+            </TouchableOpacity>
+          </View>
+
+          {financialData && (
+            <View style={styles.financialSection}>
+              <Text style={styles.sectionTitle}>📊 Hasil Analisis Keuangan</Text>
+
+              <View style={styles.financialGrid}>
+                <View style={[styles.financialCard, styles.revenueCard]}>
+                  <View style={styles.financialIconContainer}>
+                    <Text style={styles.financialIcon}>💰</Text>
+                  </View>
+                  <View style={styles.financialContent}>
+                    <Text style={styles.financialLabel}>Total Penjualan</Text>
+                    <Text style={styles.financialValue}>{formatIDR(financialData.revenue)}</Text>
+                    <Text style={styles.financialSubtext}>Pendapatan kotor</Text>
+                  </View>
+                </View>
+
+                <View style={[styles.financialCard, styles.costCard]}>
+                  <View style={styles.financialIconContainer}>
+                    <Text style={styles.financialIcon}>💸</Text>
+                  </View>
+                  <View style={styles.financialContent}>
+                    <Text style={styles.financialLabel}>Biaya Operasional</Text>
+                    <Text style={styles.financialValue}>{formatIDR(financialData.costs)}</Text>
+                    <Text style={styles.financialSubtext}>Modal & biaya</Text>
+                  </View>
+                </View>
+
+                <View style={[styles.financialCard, styles.profitCard, {
+                  backgroundColor: financialData.profit >= 0 ? Brand.SuccessGreen + '15' : Brand.FireRed + '15',
+                  borderColor: financialData.profit >= 0 ? Brand.SuccessGreen : Brand.FireRed
+                }]}>
+                  <View style={styles.financialIconContainer}>
+                    <Text style={styles.financialIcon}>📈</Text>
+                  </View>
+                  <View style={styles.financialContent}>
+                    <Text style={styles.financialLabel}>Keuntungan Bersih</Text>
+                    <Text style={[styles.financialValue, { color: financialData.profit >= 0 ? Brand.SuccessGreen : Brand.FireRed }]}>
+                      {formatIDR(financialData.profit)}
+                    </Text>
+                    <Text style={styles.financialSubtext}>
+                      {financialData.profit >= 0 ? 'Untung' : 'Rugi'}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={[styles.financialCard, styles.marginCard, {
+                  backgroundColor: financialData.profitMargin >= 0 ? Brand.SuccessGreen + '15' : Brand.FireRed + '15',
+                  borderColor: financialData.profitMargin >= 0 ? Brand.SuccessGreen : Brand.FireRed
+                }]}>
+                  <View style={styles.financialIconContainer}>
+                    <Text style={styles.financialIcon}>📊</Text>
+                  </View>
+                  <View style={styles.financialContent}>
+                    <Text style={styles.financialLabel}>Margin Keuntungan</Text>
+                    <Text style={[styles.financialValue, { color: financialData.profitMargin >= 0 ? Brand.SuccessGreen : Brand.FireRed }]}>
+                      {financialData.profitMargin.toFixed(2)}%
+                    </Text>
+                    <Text style={styles.financialSubtext}>
+                      {financialData.profitMargin >= 0 ? 'Efisien' : 'Perlu evaluasi'}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            </View>
+          )}
+
+          {financialData && (
+            <View style={styles.exportSection}>
+              <TouchableOpacity style={styles.exportBtn} onPress={exportToExcel}>
+                <Text style={styles.exportBtnText}>📤 Export ke Excel</Text>
+                <Text style={styles.exportBtnSubtext}>Download laporan lengkap</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </>
       )}
     </ScrollView>
   );

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View, ScrollView, Modal, TextInput, Platform } from 'react-native';
+import { ConnectionError } from '@/components/connection-error';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api, MenuItem } from '@/lib/api';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -30,7 +31,7 @@ export default function MenuScreen() {
       const sorted = [...data].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'id', { sensitivity: 'base' }));
       setMenu(sorted);
     } catch (e) {
-      setError('Gagal memuat menu. Pastikan server berjalan di 4002.');
+      setError('📶 Gagal memuat menu. Periksa koneksi dan coba lagi.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -164,12 +165,7 @@ export default function MenuScreen() {
 
   if (error) return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <View style={styles.center}>
-        <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity style={[styles.checkoutBtn, { marginTop: 12 }]} onPress={() => fetchMenu()}>
-          <Text style={styles.checkoutText}>Coba Lagi</Text>
-        </TouchableOpacity>
-      </View>
+      <ConnectionError message={error} onRetry={fetchMenu} />
     </View>
   );
 

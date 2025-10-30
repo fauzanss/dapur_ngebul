@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View, Image, Platform } from 'react-native';
+import { ConnectionError } from '@/components/connection-error';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, Brand } from '@/constants/theme';
 import { api, SalesSummary } from '@/lib/api';
@@ -44,7 +45,7 @@ export default function HomeScreen() {
         };
         setOrderStats(stats);
       } catch (e) {
-        setError('Gagal memuat ringkasan penjualan.');
+        setError('📶 Gagal memuat ringkasan penjualan. Periksa koneksi dan coba lagi.');
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -88,7 +89,7 @@ export default function HomeScreen() {
 
   const body = useMemo(() => {
     if (loading) return <ActivityIndicator color={Brand.FireRed} size="large" style={{ marginTop: 24 }} />;
-    if (error) return <Text style={styles.errorText}>{error}</Text>;
+    if (error) return <ConnectionError message={error} onRetry={onRefresh} />;
     return (
       <>
         <View style={styles.headerCard}>

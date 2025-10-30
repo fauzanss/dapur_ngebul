@@ -1,4 +1,4 @@
-import { API_BASE } from '@/constants/config';
+import { getApiBase } from '@/lib/settings';
 import { showGlobalLoading, hideGlobalLoading } from '@/lib/loading';
 
 export type MenuItem = {
@@ -59,7 +59,8 @@ export type SalesSummary = {
 async function http<T>(path: string, init?: RequestInit): Promise<T> {
   showGlobalLoading();
   try {
-    const res = await fetch(`${API_BASE}${path}`, {
+    const base = await getApiBase();
+    const res = await fetch(`${base}${path}`, {
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       ...init,
     });

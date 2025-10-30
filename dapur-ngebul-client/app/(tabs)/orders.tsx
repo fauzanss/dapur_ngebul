@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View, ScrollView, Modal, Pressable, Platform } from 'react-native';
+import { ConnectionError } from '@/components/connection-error';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api, OrderDetail, OrderSummary } from '@/lib/api';
@@ -28,7 +29,7 @@ export default function OrdersScreen() {
       const data = await api.getOrders(dateISO, status);
       setOrders(data);
     } catch (e) {
-      setError('Gagal memuat orders.');
+      setError('📶 Gagal memuat orders. Periksa koneksi dan coba lagi.');
     } finally {
       setLoading(false);
     }
@@ -107,7 +108,7 @@ export default function OrdersScreen() {
       {loading ? (
         <ActivityIndicator color={BRAND_PRIMARY} style={{ marginTop: 24 }} />
       ) : error ? (
-        <Text style={styles.errorText}>{error}</Text>
+        <ConnectionError message={error} onRetry={fetchOrders} />
       ) : (
         <FlatList
           data={orders}

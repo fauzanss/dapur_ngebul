@@ -1,0 +1,66 @@
+version: "3.9"
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: dapur_ngebul_db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: dapur_ngebul
+      MYSQL_USER: appuser
+      MYSQL_PASSWORD: apppass
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test:
+        ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-prootpass"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - db_data:/var/lib/mysql
+
+  migrator:
+    image: mysql:8.0
+    container_name: dapur_ngebul_migrator
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      DB_NAME: dapur_ngebul
+    volumes:
+      - ./dapur-ngebul-server/src/migrations:/migrations:ro
+    entrypoint: ["/bin/sh", "-c"]
+    command: |
+      "mysql -h db -uroot -p$MYSQL_ROOT_PASSWORD -e 'CREATE DATABASE IF NOT EXISTS ${DB_NAME};' && \
+      mysql -h db -uroot -p$MYSQL_ROOT_PASSWORD ${DB_NAME} < /migrations/create_tables.sql && \
+      if [ -f /migrations/add_customer_name_to_orders.sql ]; then mysql -h db -uroot -p$MYSQL_ROOT_PASSWORD ${DB_NAME} < /migrations/add_customer_name_to_orders.sql; fi && \
+      if [ -f /migrations/seed_menu_from_image.sql ]; then mysql -h db -uroot -p$MYSQL_ROOT_PASSWORD ${DB_NAME} < /migrations/seed_menu_from_image.sql; fi"
+    restart: "no"
+
+  api:
+    build:
+      context: ./dapur-ngebul-server
+      dockerfile: Dockerfile
+    container_name: dapur_ngebul_api
+    depends_on:
+      db:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+    environment:
+      PORT: 3001
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_USER: appuser
+      DB_PASSWORD: apppass
+      DB_NAME: dapur_ngebul
+    ports:
+      - "3001:3001"
+    restart: unless-stopped
+
+volumes:
+  db_data:
+    driver: local
