@@ -36,7 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 $router = new Router();
 
 // Health check
-$router->get('/health', function($req, $res) {
+$router->get('/api/health', function($req, $res) {
     $res->json(['ok' => true]);
 });
 
