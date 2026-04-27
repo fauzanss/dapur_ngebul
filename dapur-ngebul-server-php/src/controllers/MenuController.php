@@ -12,7 +12,6 @@ class MenuController {
     public function list($req, $res) {
         try {
             $category = $req['query']['category'] ?? null;
-            $recommended = $req['query']['recommended'] ?? null;
             $whereParts = [];
             $params = [];
 
@@ -21,22 +20,30 @@ class MenuController {
                 $params['category'] = $category;
             }
 
-            if ($recommended !== null) {
-                $recommendedFlag = filter_var($recommended, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
-                if ($recommendedFlag !== null) {
-                    $whereParts[] = 'COALESCE(is_recommended, 0) = :is_recommended';
-                    $params['is_recommended'] = $recommendedFlag ? 1 : 0;
-                }
-            }
-
             $where = '';
             if (!empty($whereParts)) {
                 $where = 'WHERE ' . implode(' AND ', $whereParts);
             }
 
-            $stmt = $this->db->prepare("SELECT * FROM menu_items $where ORDER BY COALESCE(is_recommended, 0) DESC, id ASC");
+            $recommendedStmt = $this->db->query(
+                "SELECT menu_item_id
+                 FROM order_items
+                 GROUP BY menu_item_id
+                 ORDER BY SUM(quantity) DESC, MAX(order_id) DESC
+                 LIMIT 3"
+            );
+            $recommendedRows = $recommendedStmt->fetchAll();
+            $recommendedIds = array_map(function($row) {
+                return (int)$row['menu_item_id'];
+            }, $recommendedRows);
+            $recommendedMap = array_flip($recommendedIds);
+
+            $stmt = $this->db->prepare("SELECT * FROM menu_items $where ORDER BY id ASC");
             $stmt->execute($params);
             $items = $stmt->fetchAll();
+            foreach ($items as &$item) {
+                $item['is_recommended'] = isset($recommendedMap[(int)$item['id']]);
+            }
             $res->json($items);
         } catch (Exception $e) {
             $res->status(500)->json(['message' => 'Gagal mengambil menu', 'error' => $e->getMessage()]);

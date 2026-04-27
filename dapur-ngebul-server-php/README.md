@@ -28,7 +28,6 @@ DB_PASSWORD=yourpassword
 mysql -h localhost -u root -p dapur_ngebul < ../dapur-ngebul-server/src/migrations/create_tables.sql
 mysql -h localhost -u root -p dapur_ngebul < ../dapur-ngebul-server/src/migrations/add_customer_name_to_orders.sql
 mysql -h localhost -u root -p dapur_ngebul < ../dapur-ngebul-server/src/migrations/seed_menu_from_image.sql
-mysql -h localhost -u root -p dapur_ngebul < ./src/migrations/add_is_recommended_to_menu_items.sql
 ```
 
 4. Run with PHP built-in server:
