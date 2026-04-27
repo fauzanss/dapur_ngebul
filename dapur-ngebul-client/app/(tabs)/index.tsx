@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
-import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View, Image, Platform } from 'react-native';
+import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View, Platform } from 'react-native';
+import { Image } from 'expo-image';
 import { ConnectionError } from '@/components/connection-error';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, Brand } from '@/constants/theme';

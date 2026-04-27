@@ -12,13 +12,29 @@ class MenuController {
     public function list($req, $res) {
         try {
             $category = $req['query']['category'] ?? null;
-            $where = '';
+            $recommended = $req['query']['recommended'] ?? null;
+            $whereParts = [];
             $params = [];
+
             if ($category) {
-                $where = 'WHERE category = :category';
+                $whereParts[] = 'category = :category';
                 $params['category'] = $category;
             }
-            $stmt = $this->db->prepare("SELECT * FROM menu_items $where ORDER BY id ASC");
+
+            if ($recommended !== null) {
+                $recommendedFlag = filter_var($recommended, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+                if ($recommendedFlag !== null) {
+                    $whereParts[] = 'COALESCE(is_recommended, 0) = :is_recommended';
+                    $params['is_recommended'] = $recommendedFlag ? 1 : 0;
+                }
+            }
+
+            $where = '';
+            if (!empty($whereParts)) {
+                $where = 'WHERE ' . implode(' AND ', $whereParts);
+            }
+
+            $stmt = $this->db->prepare("SELECT * FROM menu_items $where ORDER BY COALESCE(is_recommended, 0) DESC, id ASC");
             $stmt->execute($params);
             $items = $stmt->fetchAll();
             $res->json($items);

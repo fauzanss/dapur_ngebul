@@ -63,6 +63,16 @@ export default function MenuScreen() {
     );
   }, [menu, searchQuery]);
 
+  const recommendedMenu = useMemo(
+    () => filteredMenu.filter((item) => Boolean(item.is_recommended)),
+    [filteredMenu]
+  );
+
+  const regularMenu = useMemo(
+    () => filteredMenu.filter((item) => !item.is_recommended),
+    [filteredMenu]
+  );
+
   const addToCart = (item: MenuItem) => {
     setCart((prev) => {
       const existing = prev[item.id];
@@ -118,6 +128,7 @@ export default function MenuScreen() {
       ]}>
         <View style={styles.cardHeader}>
           <Text style={styles.cardTitle} numberOfLines={2}>{item.name}</Text>
+          {item.is_recommended && <Text style={styles.badgeRecommended}>Rekomendasi</Text>}
           {item.available === false && <Text style={styles.badgeUnavailable}>Habis</Text>}
           {isInCart && (
             <View style={styles.quantityBadge}>
@@ -187,10 +198,30 @@ export default function MenuScreen() {
           style={styles.searchInput}
         />
         <FlatList
-          data={filteredMenu}
+          data={regularMenu}
           keyExtractor={(it) => String(it.id)}
           contentContainerStyle={[styles.listContent, { paddingBottom: 120 }]}
           renderItem={renderItem}
+          ListHeaderComponent={(
+            <View>
+              {recommendedMenu.length > 0 && (
+                <View style={styles.sectionWrapper}>
+                  <View style={styles.recommendedBanner}>
+                    <Text style={styles.recommendedBannerTitle}>Rekomendasi Menu untukmu</Text>
+                    <Text style={styles.recommendedBannerSubtitle}>Pilihan favorit yang cocok buat order hari ini</Text>
+                  </View>
+                  {recommendedMenu.map((item) => (
+                    <View key={`recommended-${item.id}`}>
+                      {renderItem({ item })}
+                    </View>
+                  ))}
+                </View>
+              )}
+              <Text style={styles.sectionTitle}>
+                {recommendedMenu.length > 0 ? 'Menu Lainnya' : 'Semua Menu'}
+              </Text>
+            </View>
+          )}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.light.tint} />}
         />
       </View>
@@ -290,6 +321,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     overflow: 'hidden'
   },
+  badgeRecommended: {
+    backgroundColor: '#fff4e5',
+    color: '#ef6c00',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    fontSize: 11,
+    fontWeight: '700',
+    overflow: 'hidden'
+  },
   quantityBadge: {
     backgroundColor: BRAND_PRIMARY,
     borderRadius: 12,
@@ -308,6 +349,38 @@ const styles = StyleSheet.create({
     color: '#666',
     lineHeight: 20,
     marginBottom: 12
+  },
+  sectionWrapper: {
+    marginBottom: 8
+  },
+  recommendedBanner: {
+    backgroundColor: '#fff7ed',
+    borderWidth: 1,
+    borderColor: '#fed7aa',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginHorizontal: 4,
+    marginBottom: 12,
+  },
+  recommendedBannerTitle: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: '#9a3412',
+    marginBottom: 4,
+  },
+  recommendedBannerSubtitle: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#c2410c',
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#3a2d2d',
+    marginHorizontal: 4,
+    marginBottom: 10,
+    marginTop: 6
   },
   chipRow: { flexDirection: 'row', gap: 8, marginTop: 8 },
   chip: { backgroundColor: '#F1F1F1', color: '#555', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 9999, fontSize: 12 },

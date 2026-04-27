@@ -29,7 +29,16 @@
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/dapur-ngebul-logo.png"
+      "favicon": "./assets/images/dapur-ngebul-logo.png",
+      "bundler": "metro",
+      "head": {
+        "link": [
+          {
+            "rel": "stylesheet",
+            "href": "https://fonts.googleapis.com/icon?family=Material+Icons"
+          }
+        ]
+      }
     },
     "plugins": [
       "expo-router",

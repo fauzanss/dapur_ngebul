@@ -9,6 +9,7 @@ export type MenuItem = {
   price: number;
   category?: string;
   available?: boolean;
+  is_recommended?: boolean;
 };
 
 export type CreateOrderItem = {
