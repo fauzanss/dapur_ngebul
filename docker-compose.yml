@@ -24,8 +24,7 @@ services:
     container_name: dapur_ngebul_api
     working_dir: /app
     depends_on:
-      db:
-        condition: service_healthy
+      - db
     volumes:
       - ./dapur-ngebul-server-php:/app
     environment:
@@ -51,8 +50,7 @@ services:
     container_name: dapur_ngebul_frontend
     working_dir: /app
     depends_on:
-      api:
-        condition: service_healthy
+      - api
     environment:
       CI: "1"
       EXPO_NO_TELEMETRY: "1"

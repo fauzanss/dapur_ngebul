@@ -59,3 +59,16 @@ Same as Node.js version:
 - CORS enabled for all origins
 - Error logging to PHP error log
 
+## Run with Podman Compose
+
+From repository root:
+
+```bash
+podman compose up -d --build
+podman compose logs -f db api frontend
+```
+
+Endpoints:
+- Frontend: `http://localhost:8081`
+- Backend: `http://localhost:4002/api/health`
+
